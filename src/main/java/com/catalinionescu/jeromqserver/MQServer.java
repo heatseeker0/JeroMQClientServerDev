@@ -19,9 +19,9 @@ public class MQServer {
     private final int port;
     private ServerTask serverTask;
     private Thread serverThread;
-    private Queue<MQPacket> recvQueue = new ConcurrentLinkedQueue<>();
-    private Queue<MQPacket> sendQueue = new ConcurrentLinkedQueue<>();
-    private Map<Class<? extends MQPacket>, List<MQPacketHandler>> handlers = new HashMap<>();
+    private final Queue<MQPacket> recvQueue = new ConcurrentLinkedQueue<>();
+    private final Queue<MQPacket> sendQueue = new ConcurrentLinkedQueue<>();
+    private final Map<Class<? extends MQPacket>, List<MQPacketHandler>> handlers = new HashMap<>();
 
     public MQServer(final String ip, final int port) {
         this.ip = ip;
@@ -46,6 +46,9 @@ public class MQServer {
         sendQueue.add(packet);
     }
 
+    /**
+     * Calls the packet handlers for any packet in the receive queue.
+     */
     public void runHandlers() {
         while (!recvQueue.isEmpty()) {
             MQPacket packet = recvQueue.remove();

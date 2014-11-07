@@ -4,6 +4,11 @@ import java.util.Queue;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import com.catalinionescu.jeromqserver.events.MQEventClientConnect;
+import com.catalinionescu.jeromqserver.events.MQEventClientDisconnect;
+import com.catalinionescu.jeromqserver.events.MQEventListener;
+import com.catalinionescu.jeromqserver.events.MQEventSendHeartbeat;
+import com.catalinionescu.jeromqserver.events.MQListener;
 import com.catalinionescu.jeromqserver.packets.MQPacket;
 import com.catalinionescu.jeromqserver.packets.MQPacketHeartbeatRequest;
 import com.catalinionescu.jeromqserver.packets.MQPacketHeartbeatResponse;
@@ -19,6 +24,24 @@ public class JeroMQClientServer {
         @Override
         public void handle(MQPacket request) {
             getServer().sendPacket(new MQPacketHeartbeatResponse(request.getPacketId()));
+        }
+    }
+
+    class EventListener implements MQListener {
+        @MQEventListener
+        public void onClientDisconnect(MQEventClientDisconnect event) {
+            System.out.println(String.format("Client: Missed %d heartbeats with server. Reconnecting...", event.getClient().getMissedHeartbeats()));
+        }
+
+        @SuppressWarnings("unused")
+        @MQEventListener
+        public void onClientConnect(MQEventClientConnect event) {
+            System.out.println("Client: Reestablished communication with server.");
+        }
+
+        @MQEventListener
+        public void onHeartbeatSend(MQEventSendHeartbeat event) {
+            System.out.println(String.format("Client: Sent server heartbeat. Missed heartbeats: %d", event.getClient().getMissedHeartbeats()));
         }
     }
 
@@ -57,6 +80,7 @@ public class JeroMQClientServer {
 
     public void start() {
         MQClient client = new MQClient("localhost", TCP_PORT);
+        client.registerHandlers(new EventListener());
         client.start();
 
         MQServer server = createServer();
@@ -69,6 +93,7 @@ public class JeroMQClientServer {
         String cmd = "";
         while (running) {
             server.runHandlers();
+            client.callListeners();
             cmd = cmdHandler.getCmd();
             if (cmd != null) {
                 switch (cmd) {
